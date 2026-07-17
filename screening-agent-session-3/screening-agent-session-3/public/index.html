@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TalentScope Screening Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #ffffff;
+      color: #111827;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    /* ── Header ── */
+    header { margin-bottom: 36px; }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111827;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      margin-top: 8px;
+      font-size: 15px;
+      color: #6B7280;
+      max-width: 540px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Pickers ── */
+    .picker-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 540px) { .picker-row { grid-template-columns: 1fr; } }
+
+    .picker-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px 36px 10px 12px;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 15px;
+      color: #111827;
+      background: #ffffff;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #2563EB;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    /* ── Model grid ── */
+    .form-divider {
+      border: none;
+      border-top: 1px solid #E5E7EB;
+      margin: 20px 0;
+    }
+
+    .form-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #6B7280;
+      margin-bottom: 14px;
+    }
+
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 540px) { .picker-row, .model-grid { grid-template-columns: 1fr; } }
+
+    .model-grid label .label-sub {
+      font-size: 11px;
+      font-weight: 400;
+      color: #6B7280;
+      margin-left: 4px;
+    }
+
+    .file-link {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #2563EB;
+      text-decoration: none;
+    }
+
+    .file-link:hover { text-decoration: underline; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      height: 48px;
+      background: #2563EB;
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn-primary:hover:not(:disabled) { background: #1D4ED8; }
+    .btn-primary:active:not(:disabled) { transform: translateY(1px); }
+    .btn-primary:disabled { background: #93C5FD; cursor: not-allowed; }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 24px;
+      background: #ffffff;
+      color: #374151;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn-secondary:hover { background: #F9FAFB; border-color: #9CA3AF; }
+
+    /* ── Loading ── */
+    #loading-state { text-align: center; }
+
+    .loading-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      font-weight: 600;
+      font-size: 16px;
+      color: #111827;
+    }
+
+    .spinner {
+      width: 22px;
+      height: 22px;
+      border: 2.5px solid #E5E7EB;
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: left;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: #6B7280;
+      transition: color 0.3s;
+    }
+
+    .step-item.active { color: #111827; font-weight: 500; }
+    .step-item.done { color: #059669; }
+
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: #E5E7EB;
+      transition: background 0.3s;
+    }
+
+    .step-item.active .step-dot {
+      background: #2563EB;
+      animation: pulse-dot 1s ease-in-out infinite;
+    }
+
+    .step-item.done .step-dot { background: #059669; animation: none; }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ── Error ── */
+    .error-banner {
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 12px;
+      padding: 16px 20px;
+      color: #991B1B;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+
+    .error-banner strong { flex-shrink: 0; }
+
+    /* ── Recommendation banner ── */
+    .rec-banner {
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .rec-banner.shortlist { background: #ECFDF5; border: 1px solid #A7F3D0; }
+    .rec-banner.review    { background: #FFFBEB; border: 1px solid #FDE68A; }
+    .rec-banner.reject    { background: #FEF2F2; border: 1px solid #FECACA; }
+
+    .rec-icon-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .rec-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .shortlist .rec-icon { background: #059669; color: #fff; }
+    .review    .rec-icon { background: #D97706; color: #fff; }
+    .reject    .rec-icon { background: #DC2626; color: #fff; }
+
+    .rec-label {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .shortlist .rec-label { color: #065F46; }
+    .review    .rec-label { color: #92400E; }
+    .reject    .rec-label { color: #7F1D1D; }
+
+    .rec-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 480px) { .rec-meta { grid-template-columns: 1fr; } }
+
+    .meta-item {
+      background: rgba(255, 255, 255, 0.65);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .meta-key {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6B7280;
+      margin-bottom: 3px;
+    }
+
+    .meta-val {
+      display: block;
+      font-size: 20px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    /* ── HITL block ── */
+    .hitl-banner {
+      background: #FFFBEB;
+      border: 2px solid #F59E0B;
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+
+    .hitl-flag {
+      font-size: 26px;
+      line-height: 1;
+      color: #D97706;
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+
+    .hitl-content strong {
+      display: block;
+      font-size: 16px;
+      font-weight: 700;
+      color: #78350F;
+      margin-bottom: 5px;
+    }
+
+    .hitl-content p {
+      font-size: 14px;
+      color: #92400E;
+      line-height: 1.55;
+    }
+
+    /* ── Section heading ── */
+    .section-heading {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #6B7280;
+      margin-bottom: 12px;
+    }
+
+    /* ── Details / collapsible ── */
+    details {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    summary {
+      padding: 16px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #111827;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+
+    summary::after {
+      content: '';
+      display: inline-block;
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #9CA3AF;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    details:not([open]) summary::after { transform: rotate(-90deg); }
+
+    .details-body { padding: 0 20px 20px; }
+
+    /* ── Criteria chips ── */
+    .criteria-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .criterion-chip {
+      background: #ffffff;
+      border: 1px solid #E5E7EB;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .criterion-chip.hard { border-left: 3px solid #2563EB; }
+    .criterion-chip.preferred { border-left: 3px solid #D1D5DB; }
+
+    .chip-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .chip-id {
+      font-size: 11px;
+      font-weight: 700;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .chip-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 99px;
+    }
+
+    .chip-badge.hard     { background: #DBEAFE; color: #1E40AF; }
+    .chip-badge.preferred { background: #F3F4F6; color: #6B7280; }
+
+    .chip-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #111827;
+      line-height: 1.4;
+    }
+
+    /* ── Evaluation table ── */
+    .table-wrapper { overflow-x: auto; }
+
+    .eval-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .eval-table th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid #E5E7EB;
+      white-space: nowrap;
+    }
+
+    .eval-table td {
+      padding: 12px;
+      border-bottom: 1px solid #F3F4F6;
+      vertical-align: top;
+    }
+
+    .eval-table tr:last-child td { border-bottom: none; }
+    .eval-table tr:hover td { background: #F9FAFB; }
+
+    .criterion-cell strong { display: block; font-weight: 600; color: #111827; }
+    .criterion-cell span   { font-size: 11px; color: #9CA3AF; }
+
+    .verdict-badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .verdict-badge.met             { background: #D1FAE5; color: #065F46; }
+    .verdict-badge.partially-met   { background: #FEF3C7; color: #92400E; }
+    .verdict-badge.not-met         { background: #FEE2E2; color: #991B1B; }
+    .verdict-badge.cannot-verify   { background: #F3F4F6; color: #6B7280; }
+
+    .evidence-quote {
+      font-size: 12px;
+      color: #374151;
+      font-style: italic;
+      line-height: 1.45;
+      max-width: 280px;
+    }
+
+    .evidence-none { font-size: 12px; color: #9CA3AF; font-style: italic; }
+
+    .confidence-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .confidence-dot.high     { background: #059669; }
+    .confidence-dot.medium   { background: #D97706; }
+    .confidence-dot.low      { background: #DC2626; }
+
+    .confidence-label { font-size: 12px; color: #6B7280; }
+
+    /* ── Top reasons ── */
+    .reasons-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .reason-card {
+      background: #ffffff;
+      border: 1px solid #E5E7EB;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .reason-verdict { flex-shrink: 0; padding-top: 2px; }
+
+    .reason-body strong {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 3px;
+    }
+
+    .reason-body p { font-size: 12px; color: #6B7280; line-height: 1.45; }
+
+    .no-reasons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: #059669;
+      font-weight: 500;
+      padding: 4px 0;
+    }
+
+    /* ── Footer ── */
+    .footer-actions {
+      display: flex;
+      justify-content: center;
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+
+    /* ── Utility ── */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ── Header ── -->
+    <header>
+      <h1>TalentScope Screening Agent</h1>
+      <p>Pick a role and a candidate, then hit Screen. The agent checks each must-have criterion against the resume and returns a recommendation you can act on or escalate — with the evidence shown.</p>
+    </header>
+
+    <!-- ── Form ── -->
+    <div id="screen-form" class="card">
+      <div class="picker-row">
+        <div class="picker-group">
+          <label for="jd-picker">Job Description</label>
+          <select id="jd-picker">
+            <option value="data/jd.txt">Customer Success Manager</option>
+          </select>
+          <a href="/data/jd.txt" target="_blank" class="file-link">View job description ↗</a>
+        </div>
+        <div class="picker-group">
+          <label for="candidate-picker">Candidate</label>
+          <select id="candidate-picker">
+            <option value="">Select a candidate…</option>
+            <option value="data/candidate-a.txt">Priya Raghunathan</option>
+            <option value="data/candidate-b.txt">Vikram Joshi</option>
+            <option value="data/candidate-c.txt">Ananya Singh</option>
+            <option value="data/candidate-d.txt">Rahul Verma - ⚠ injection test</option>
+            <option value="data/candidate-e.txt">Deepa Krishnamurthy</option>
+            <option value="data/candidate-f.txt">Arjun Mehta - (incomplete resume)</option>
+            <option value="data/candidate-l.txt">Kavya Nair - (regression test)</option>
+          </select>
+          <a id="candidate-link" href="#" target="_blank" class="file-link hidden">View resume ↗</a>
+        </div>
+      </div>
+      <hr class="form-divider" />
+
+      <details>
+        <summary>Pipeline models <span class="label-sub" style="font-weight:400;font-size:12px;color:#9CA3AF;margin-left:6px;">optional</span></summary>
+        <div class="details-body" style="padding: 16px 0 0;">
+          <div class="model-grid">
+            <div class="picker-group">
+              <label for="model-step1">Step 1 <span class="label-sub">Criteria</span></label>
+              <select id="model-step1">
+                <option value="claude-haiku-4-5-20251001">Haiku 4.5 — fast</option>
+                <option value="claude-sonnet-4-6" selected>Sonnet 4.6 — balanced</option>
+                <option value="claude-opus-4-8">Opus 4.8 — thorough</option>
+              </select>
+            </div>
+            <div class="picker-group">
+              <label for="model-step2">Step 2 <span class="label-sub">Evidence</span></label>
+              <select id="model-step2">
+                <option value="claude-haiku-4-5-20251001">Haiku 4.5 — fast</option>
+                <option value="claude-sonnet-4-6" selected>Sonnet 4.6 — balanced</option>
+                <option value="claude-opus-4-8">Opus 4.8 — thorough</option>
+              </select>
+            </div>
+            <div class="picker-group">
+              <label for="model-step3">Step 3 <span class="label-sub">Decision</span></label>
+              <select id="model-step3">
+                <option value="claude-haiku-4-5-20251001">Haiku 4.5 — fast</option>
+                <option value="claude-sonnet-4-6" selected>Sonnet 4.6 — balanced</option>
+                <option value="claude-opus-4-8">Opus 4.8 — thorough</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <button id="screen-btn" class="btn-primary">Screen Candidate</button>
+    </div>
+
+    <!-- ── Loading ── -->
+    <div id="loading-state" class="card hidden">
+      <div class="loading-header">
+        <div class="spinner"></div>
+        <span>Screening…</span>
+      </div>
+      <div class="steps-list">
+        <div class="step-item" id="step-item-1">
+          <div class="step-dot"></div>
+          <span>1. Extracting criteria…</span>
+        </div>
+        <div class="step-item" id="step-item-2">
+          <div class="step-dot"></div>
+          <span>2. Evaluating evidence…</span>
+        </div>
+        <div class="step-item" id="step-item-3">
+          <div class="step-dot"></div>
+          <span>3. Assembling recommendation…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Error ── -->
+    <div id="error-banner" class="error-banner hidden">
+      <strong>Error&nbsp;—&nbsp;</strong>
+      <span id="error-message"></span>
+    </div>
+
+    <!-- ── Results ── -->
+    <div id="results" class="hidden">
+
+      <!-- Recommendation banner -->
+      <div id="rec-banner" class="rec-banner">
+        <div class="rec-icon-label">
+          <div id="rec-icon" class="rec-icon"></div>
+          <div id="rec-label" class="rec-label"></div>
+        </div>
+        <div class="rec-meta">
+          <div class="meta-item">
+            <span class="meta-key">Confidence</span>
+            <span id="rec-confidence" class="meta-val"></span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-key">Must-have coverage</span>
+            <span id="rec-coverage" class="meta-val"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- HITL block -->
+      <div id="hitl-block" class="hitl-banner hidden">
+        <div class="hitl-flag">⚑</div>
+        <div class="hitl-content">
+          <strong>Human Review Required</strong>
+          <p id="hitl-reason-text"></p>
+        </div>
+      </div>
+
+      <!-- How we got here -->
+      <p class="section-heading">How we got here</p>
+
+      <details>
+        <summary>1. Criteria extracted</summary>
+        <div class="details-body">
+          <div id="criteria-chips" class="criteria-grid"></div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>2. Per-criterion evaluation</summary>
+        <div class="details-body">
+          <div class="table-wrapper">
+            <table class="eval-table">
+              <thead>
+                <tr>
+                  <th>Criterion</th>
+                  <th>Verdict</th>
+                  <th>Evidence quote</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+              <tbody id="eval-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+
+      <details open>
+        <summary>3. Top reasons</summary>
+        <div class="details-body">
+          <div id="top-reasons" class="reasons-list"></div>
+        </div>
+      </details>
+
+      <div class="footer-actions">
+        <button id="rescreen-btn" class="btn-secondary">↺ Re-screen</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // ── DOM refs ──────────────────────────────────────────────────────────
+    const $form       = document.getElementById('screen-form');
+    const $loading    = document.getElementById('loading-state');
+    const $error      = document.getElementById('error-banner');
+    const $errorMsg   = document.getElementById('error-message');
+    const $results    = document.getElementById('results');
+    const $screenBtn  = document.getElementById('screen-btn');
+    const $rescreenBtn = document.getElementById('rescreen-btn');
+    const $jdPicker   = document.getElementById('jd-picker');
+    const $candPicker = document.getElementById('candidate-picker');
+
+    // ── Step animation ────────────────────────────────────────────────────
+    let stepTimers = [];
+
+    function setStep(n, state) {
+      const el = document.getElementById(`step-item-${n}`);
+      if (!el) return;
+      el.className = 'step-item' + (state ? ` ${state}` : '');
+    }
+
+    function startStepAnimation() {
+      setStep(1, 'active');
+      stepTimers.push(setTimeout(() => {
+        setStep(1, 'done');
+        setStep(2, 'active');
+      }, 18000));
+      stepTimers.push(setTimeout(() => {
+        setStep(2, 'done');
+        setStep(3, 'active');
+      }, 55000));
+    }
+
+    function finishStepAnimation() {
+      stepTimers.forEach(clearTimeout);
+      stepTimers = [];
+      setStep(1, 'done');
+      setStep(2, 'done');
+      setStep(3, 'done');
+    }
+
+    function resetSteps() {
+      stepTimers.forEach(clearTimeout);
+      stepTimers = [];
+      [1, 2, 3].forEach(n => setStep(n, ''));
+    }
+
+    // ── UI state helpers ──────────────────────────────────────────────────
+    function showDefault() {
+      $form.classList.remove('hidden');
+      $loading.classList.add('hidden');
+      $error.classList.add('hidden');
+      $results.classList.add('hidden');
+      $screenBtn.disabled = false;
+      resetSteps();
+    }
+
+    function showLoading() {
+      $form.classList.remove('hidden');
+      $loading.classList.remove('hidden');
+      $error.classList.add('hidden');
+      $results.classList.add('hidden');
+      $screenBtn.disabled = true;
+      startStepAnimation();
+    }
+
+    function showError(msg) {
+      finishStepAnimation();
+      $loading.classList.add('hidden');
+      $error.classList.remove('hidden');
+      $errorMsg.textContent = msg;
+      $results.classList.add('hidden');
+      $screenBtn.disabled = false;
+    }
+
+    function showResults() {
+      finishStepAnimation();
+      $loading.classList.add('hidden');
+      $error.classList.add('hidden');
+      $results.classList.remove('hidden');
+      $results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── API helpers ───────────────────────────────────────────────────────
+    async function loadFile(filePath) {
+      const res = await fetch('/api/load-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Could not load ${filePath}`);
+      }
+      const { text } = await res.json();
+      return text;
+    }
+
+    async function screen() {
+      const jdPath   = $jdPicker.value;
+      const candPath = $candPicker.value;
+
+      if (!candPath) {
+        $candPicker.focus();
+        showError('Please select a candidate before screening.');
+        return;
+      }
+
+      showLoading();
+
+      let jdText, resumeText;
+      try {
+        [jdText, resumeText] = await Promise.all([
+          loadFile(jdPath),
+          loadFile(candPath),
+        ]);
+      } catch (err) {
+        showError(`File load failed: ${err.message}`);
+        return;
+      }
+
+      const models = {
+        step1: document.getElementById('model-step1').value,
+        step2: document.getElementById('model-step2').value,
+        step3: document.getElementById('model-step3').value,
+      };
+
+      let data;
+      try {
+        const res = await fetch('/api/screen', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jdText, resumeText, models }),
+        });
+        data = await res.json();
+      } catch (err) {
+        showError(`Network error: ${err.message}`);
+        return;
+      }
+
+      if (!data.success) {
+        const step = data.step ? `${data.step}: ` : '';
+        showError(`${step}${data.error || 'Screening failed.'}`);
+        return;
+      }
+
+      renderResults(data.result);
+      showResults();
+    }
+
+    // ── Render helpers ────────────────────────────────────────────────────
+    const HITL_REASON_LABELS = {
+      'cannot_verify_hard_criterion':
+        'One or more required criteria cannot be confirmed from the resume. Please verify directly with the candidate before proceeding.',
+      'persuasive_wrong_candidate':
+        'This candidate has strong institutional credentials alongside a hard criterion failure. Review required to ensure credential signals are not overriding a function mismatch.',
+      'low_confidence':
+        'Screening confidence is low — the evaluation flagged ambiguous or contradictory information. Please review this candidate manually.',
+      'injection_attempt_detected':
+        'This resume contained content that may have attempted to manipulate automated screening. Manual review required. (Admin note: security team has been notified.)',
+      'rationale_failed_validation':
+        'The automated rationale did not pass quality checks. Human judgment required before a decision is recorded.',
+      'evidence_incomplete':
+        'Evidence was insufficient for a confident automated decision. Please screen this candidate directly.',
+    };
+
+    function hitlLabel(reason) {
+      if (!reason) return 'Manual review required before finalising this decision.';
+      return HITL_REASON_LABELS[reason] ||
+        reason.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function verdictClass(v) {
+      return {
+        MET: 'met',
+        PARTIALLY_MET: 'partially-met',
+        NOT_MET: 'not-met',
+        CANNOT_VERIFY: 'cannot-verify',
+      }[v] || 'cannot-verify';
+    }
+
+    function verdictText(v) {
+      return {
+        MET: 'MET',
+        PARTIALLY_MET: 'PARTIAL',
+        NOT_MET: 'NOT MET',
+        CANNOT_VERIFY: 'CANNOT VERIFY',
+      }[v] || v;
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ── Main render ───────────────────────────────────────────────────────
+    function renderResults(result) {
+      const { jdRequirements, evaluation, recommendation } = result;
+
+      // ── Recommendation banner ──
+      const rec = recommendation.recommendation; // SHORTLIST | REVIEW | REJECT
+      const $banner = document.getElementById('rec-banner');
+      $banner.className = 'rec-banner ' + { SHORTLIST: 'shortlist', REVIEW: 'review', REJECT: 'reject' }[rec];
+
+      document.getElementById('rec-icon').textContent =
+        { SHORTLIST: '✓', REVIEW: '◐', REJECT: '✕' }[rec] || '?';
+
+      document.getElementById('rec-label').textContent =
+        { SHORTLIST: 'RECOMMEND', REVIEW: 'HOLD FOR REVIEW', REJECT: 'REJECT' }[rec] || rec;
+
+      document.getElementById('rec-confidence').textContent =
+        recommendation.confidence != null
+          ? Math.round(recommendation.confidence * 100) + '%'
+          : '—';
+
+      const coverage = recommendation.must_have_coverage;
+      document.getElementById('rec-coverage').textContent =
+        coverage != null ? `${coverage}%` : '—';
+
+      // ── HITL block ──
+      const $hitl = document.getElementById('hitl-block');
+      if (recommendation.hitl_required) {
+        $hitl.classList.remove('hidden');
+        document.getElementById('hitl-reason-text').textContent =
+          hitlLabel(recommendation.hitl_reason);
+      } else {
+        $hitl.classList.add('hidden');
+      }
+
+      // ── Criteria chips ──
+      const $chips = document.getElementById('criteria-chips');
+      $chips.innerHTML = '';
+      const criteria = (jdRequirements && jdRequirements.criteria) || [];
+      criteria.forEach(c => {
+        const div = document.createElement('div');
+        div.className = `criterion-chip ${c.type === 'hard' ? 'hard' : 'preferred'}`;
+        div.innerHTML =
+          `<div class="chip-top">
+             <span class="chip-id">${esc(c.criterion_id)}</span>
+             <span class="chip-badge ${c.type === 'hard' ? 'hard' : 'preferred'}">
+               ${c.type === 'hard' ? 'Must-have' : 'Preferred'}
+             </span>
+           </div>
+           <div class="chip-label">${esc(c.criterion_label)}</div>`;
+        $chips.appendChild(div);
+      });
+
+      // ── Evaluation table ──
+      const $tbody = document.getElementById('eval-tbody');
+      $tbody.innerHTML = '';
+
+      // Build a lookup from criterion_id → evidence
+      const evidenceMap = {};
+      ((evaluation && evaluation.evidence) || []).forEach(e => {
+        evidenceMap[e.criterion_id] = e;
+      });
+
+      // Also pull from must_have_evaluation for confidence field
+      const mheMap = {};
+      ((evaluation && evaluation.must_have_evaluation) || []).forEach(m => {
+        mheMap[m.criterion_id] = m;
+      });
+
+      criteria.forEach(c => {
+        const ev = evidenceMap[c.criterion_id] || {};
+        const mhe = mheMap[c.criterion_id] || {};
+        const confidence = mhe.confidence || (ev.verdict === 'MET' ? 'high' : ev.verdict === 'PARTIALLY_MET' ? 'medium' : 'low');
+        const vc = verdictClass(ev.verdict || 'CANNOT_VERIFY');
+        const quote = ev.resume_quote
+          ? `<span class="evidence-quote">"${esc(ev.resume_quote)}"</span>`
+          : `<span class="evidence-none">—</span>`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          `<td class="criterion-cell">
+             <strong>${esc(c.criterion_id)}</strong>
+             <span>${esc(c.criterion_label)}</span>
+           </td>
+           <td>
+             <span class="verdict-badge ${vc}">${verdictText(ev.verdict || 'CANNOT_VERIFY')}</span>
+           </td>
+           <td>${quote}</td>
+           <td>
+             <span class="confidence-dot ${confidence}"></span>
+             <span class="confidence-label">${esc(confidence)}</span>
+           </td>`;
+        $tbody.appendChild(tr);
+      });
+
+      // ── Top reasons ──
+      const $reasons = document.getElementById('top-reasons');
+      $reasons.innerHTML = '';
+
+      const topReasons = (recommendation.top_reasons || []);
+
+      if (topReasons.length === 0) {
+        $reasons.innerHTML = `<div class="no-reasons">✓ All must-have criteria satisfied</div>`;
+      } else {
+        topReasons.forEach(reason => {
+          // reason is "C1 (label): NOT_MET" — parse it
+          const match = reason.match(/^(C\d+)\s*\(([^)]+)\):\s*(.+)$/);
+          const cid    = match ? match[1] : '';
+          const clabel = match ? match[2] : reason;
+          const cverd  = match ? match[3].trim() : '';
+
+          const ev = cid ? (evidenceMap[cid] || {}) : {};
+          const vc = verdictClass(cverd || ev.verdict);
+
+          const card = document.createElement('div');
+          card.className = 'reason-card';
+          card.innerHTML =
+            `<div class="reason-verdict">
+               <span class="verdict-badge ${vc}">${verdictText(cverd || ev.verdict || '?')}</span>
+             </div>
+             <div class="reason-body">
+               <strong>${cid ? `${esc(cid)} — ` : ''}${esc(clabel)}</strong>
+               <p>${ev.reasoning ? esc(ev.reasoning) : 'No evidence found in resume.'}</p>
+             </div>`;
+          $reasons.appendChild(card);
+        });
+      }
+    }
+
+    // ── Event listeners ───────────────────────────────────────────────────
+    $screenBtn.addEventListener('click', screen);
+    $rescreenBtn.addEventListener('click', showDefault);
+
+    // Update candidate resume link and clear error when picker changes
+    const $candLink = document.getElementById('candidate-link');
+    $candPicker.addEventListener('change', () => {
+      if (!$error.classList.contains('hidden')) $error.classList.add('hidden');
+      const val = $candPicker.value;
+      if (val) {
+        $candLink.href = '/' + val;
+        $candLink.classList.remove('hidden');
+      } else {
+        $candLink.classList.add('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

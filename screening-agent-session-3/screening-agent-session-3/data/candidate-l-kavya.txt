@@ -1,0 +1,45 @@
+KAVYA NAIR
+Bengaluru, Karnataka | kavya.nair@gmail.com | +91 96110 XXXXX
+
+---
+
+EXPERIENCE
+
+Client Services Manager
+PayZen India Pvt. Ltd. | Bengaluru | May 2021 – Present (3 years 1 month)
+
+PayZen India is a B2B payments and reconciliation SaaS for mid-market retail and hospitality chains. Series B, 280 employees.
+
+- Managing a portfolio of 65 mid-market accounts (₹4L–₹18L ARR), primarily retail chains and hospitality groups across South and West India
+- Net Revenue Retention: 106% in FY2023–24; 102% in FY2022–23
+- Zero preventable churns in the last 18 months; one unavoidable churn (client underwent acquisition)
+- Conducted QBRs for all accounts above ₹8L ARR — 91% completed on schedule
+- Identified and closed 14 upsell opportunities in FY2023–24: ₹18L in expansion ARR
+- Led onboarding for 19 new accounts in the last 12 months; average time-to-value: 28 days vs. 40-day team target
+- Co-authored the client risk playbook adopted by the 8-person client services team in Q3 FY2024
+- Tracked account health weekly using Salesforce dashboards: flagged at-risk accounts by login frequency and support ticket volume, and translated usage signals into prioritised outreach lists for QBR preparation
+
+Customer Success Analyst
+Razorpay | Bengaluru | August 2019 – April 2021 (1 year 9 months)
+
+- Supported senior CSMs on a portfolio of 40 SMB accounts — conducted health check-ins, prepared QBR decks, tracked renewal milestones
+- Built a renewal tracker in Google Sheets, later migrated to Salesforce by the ops team
+- Received return offer from PayZen India after referral from a Razorpay colleague
+
+---
+
+EDUCATION
+
+B.Tech, Information Technology
+RV College of Engineering, Bengaluru | 2015–2019
+CGPA: 8.1/10
+
+---
+
+SKILLS
+
+- CRM: Salesforce (advanced — 3 years daily use), HubSpot (proficient)
+- Data: Excel (advanced — pivot tables, dashboards), Google Sheets, basic SQL
+- Communication: English (professional), Kannada (native), Hindi (conversational)
+- Domain: B2B payments, retail SaaS, hospitality tech
+

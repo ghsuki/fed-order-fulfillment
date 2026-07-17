@@ -1,0 +1,157 @@
+# Federal Order Fulfillment Control Tower — Setup Complete ✓
+
+## What's Built
+
+### ✅ Database (Supabase)
+- [x] Schema with 5 tables loaded
+- [x] Seed data for 5 named test orders (T1–T6)
+- [x] All constraints and indexes configured
+
+### ✅ Backend (Next.js API)
+- [x] `/api/scenario` endpoint
+  - Accepts order_id and trigger_mode
+  - Assembles context from Supabase
+  - Calls Claude with system prompt
+  - Server-side validators (compliance, hallucination, qty assertion, schema)
+  - Retry logic (1 automatic retry on validation failure)
+  - Langfuse tracing
+  - Writes results to Supabase
+
+### ✅ Frontend (Next.js React)
+- [x] Federal Order Dashboard
+  - Lists all open orders with risk scores
+  - "Run Scenario" button for manual triggering
+  - Scenario detail modal with step-by-step plan
+  - Approve/Reject buttons (UI only; backend logic pending)
+
+### ✅ Validators
+- [x] JSON schema validation
+- [x] Compliance constraint enforcement (TAA/ITAR)
+- [x] Hallucinated inventory detection
+- [x] Quantity assertion (feasibility=full requires qty_fulfilled=qty_required)
+
+### ✅ Langfuse Integration
+- [x] Trace creation per scenario run
+- [x] Spans: context assembly, Claude call, validation, Supabase write
+- [x] Scores: compliance_pass, qty_assertion_pass, hallucination_pass, schema_valid, latency_within_sla
+- [x] Failure event logging
+
+### ✅ Project Structure
+```
+app/
+├── api/scenario/route.ts    — Main API endpoint
+├── layout.tsx               — Root layout
+├── page.tsx                 — Dashboard UI (client-side)
+└── globals.css              — Styling
+
+lib/
+├── supabase.ts              — Database client & queries
+├── validators.ts            — Response validation logic
+├── langfuse.ts              — Tracing and scoring
+└── types.ts                 — TypeScript interfaces
+
+schema.sql                    — Database schema & seed
+agent_system_prompt.md       — Claude system prompt (loaded at runtime)
+.env.local.example           — Environment template
+package.json                 — Dependencies
+```
+
+## Next Steps
+
+### 1. Configure Environment Variables
+```bash
+cp .env.local.example .env.local
+```
+Fill in:
+- `NEXT_PUBLIC_SUPABASE_URL` ✓ Already have
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Get from Supabase Settings
+- `SUPABASE_SERVICE_ROLE_KEY` ✓ Already have
+- `ANTHROPIC_API_KEY` — Get from Anthropic console
+- `NEXT_PUBLIC_LANGFUSE_PUBLIC_KEY` — Get from Langfuse (optional for now)
+- `LANGFUSE_SECRET_KEY` — Get from Langfuse (optional for now)
+
+### 2. Start Development Server
+```bash
+npm run dev
+```
+Opens at `http://localhost:3000`
+
+### 3. Test with Seed Orders
+Use the dashboard to manually trigger scenarios for:
+- **FED-90012** (T1) — Should return 1 scenario, Lever 1 only
+- **FED-88421** (T2) — Should return up to 3 scenarios, Levers 1+3+4
+- **FED-91005** (T3) — Should return scenarios with Levers 1+2
+- **FED-92001** (T4) — Should return scenarios=[], units_unresolvable=400
+- **FED-92002** (T5) — Should return scenarios=[], units_unresolvable=250
+
+### 4. Verify Quality Criteria
+Before running a demo, verify all DEMO-BLOCKING criteria pass:
+- [ ] Run each seed order 10 times
+- [ ] Check Langfuse scores: all must be 1.0
+  - compliance_pass = 1.0
+  - qty_assertion_pass = 1.0
+  - hallucination_pass = 1.0
+  - schema_valid = 1.0
+  - lever_accuracy = 1.0 on all 5 orders
+- [ ] No scenarios are suppressed due to validation failures
+- [ ] Latency is acceptable (< 5s median, < 10s p95)
+
+### 5. Optional: Wire Up Scenario Approval
+The UI buttons for Approve/Reject are ready but logic is pending:
+- [ ] Add route to update fulfillment_scenarios.status → 'approved' | 'rejected'
+- [ ] Update federal_orders.status → 'fulfilled' | 'rejected'
+- [ ] Emit Langfuse event for approval
+- [ ] Show Order History screen with approved scenarios
+
+## Known Limitations (PoC)
+
+- **No authentication** — Anyone can access the API and dashboard
+- **No rate limiting** — No protections against abuse
+- **Manual approval only** — Scenarios are not auto-approved
+- **No backfill logic** — Once a scenario is approved, no workflow to execute it
+- **Langfuse optional** — Tracing works but without keys, no data is sent
+- **No error recovery** — If Claude times out twice, user gets error; no graceful degradation
+
+## Testing Checklist
+
+- [ ] npm run build succeeds
+- [ ] npm run dev starts without errors
+- [ ] Dashboard loads with 5 orders
+- [ ] Click "Run Scenario" on FED-90012
+- [ ] Check that Claude is called (watch terminal for timing logs)
+- [ ] Verify scenario modal shows with plan and steps
+- [ ] Check Supabase: fulfillment_scenarios table should have 1 new row
+- [ ] Verify risk_score was updated on federal_orders row
+- [ ] Test FED-92001 (should show red banner: scenarios=[])
+- [ ] Test with missing API key (should show error gracefully)
+
+## Files Modified
+
+- schema.sql ✓
+- SCHEMA_REVIEW.md ✓
+- agent_system_prompt.md (not modified — loaded from disk)
+- package.json ✓
+- tsconfig.json (auto-generated by Next.js) ✓
+- .gitignore ✓
+- .env.local.example ✓
+- app/layout.tsx ✓
+- app/page.tsx ✓
+- app/globals.css ✓
+- app/api/scenario/route.ts ✓
+- lib/types.ts ✓
+- lib/supabase.ts ✓
+- lib/validators.ts ✓
+- lib/langfuse.ts ✓
+
+## Questions?
+
+Refer to the PRD (federal-fulfillment-control-tower-prd-v2.md) for:
+- Data model details
+- Validator specifications
+- Failure modes & escalation
+- Quality criteria & test cases
+- Observability structure
+
+---
+
+**Status:** Ready for local development and manual testing ✓

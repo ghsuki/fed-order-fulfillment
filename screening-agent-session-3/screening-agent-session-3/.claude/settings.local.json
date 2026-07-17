@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp /Users/anandvishwanathan/thecrux-pmtrack/aipm-01/talentscope-data/job-description-csm.txt /Users/anandvishwanathan/thecrux-pmtrack/screening-agent/data/jd.txt)",
+      "Bash(cp /Users/anandvishwanathan/thecrux-pmtrack/aipm-01/talentscope-data/candidate-a-priya.txt /Users/anandvishwanathan/thecrux-pmtrack/screening-agent/data/candidate-a.txt)",
+      "Bash(cp /Users/anandvishwanathan/thecrux-pmtrack/aipm-01/talentscope-data/candidate-b-vikram.txt /Users/anandvishwanathan/thecrux-pmtrack/screening-agent/data/candidate-b.txt)",
+      "Bash(cp /Users/anandvishwanathan/thecrux-pmtrack/aipm-01/talentscope-data/candidate-c-ananya.txt /Users/anandvishwanathan/thecrux-pmtrack/screening-agent/data/candidate-c.txt)",
+      "Bash(npm install *)",
+      "Bash(node --check /Users/anandvishwanathan/thecrux-pmtrack/screening-agent/server.js)",
+      "Bash(gh api *)",
+      "Bash(curl *)"
+    ]
+  }
+}

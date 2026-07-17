@@ -1,0 +1,25 @@
+{
+  "name": "fed-order-fulfillment",
+  "version": "1.0.0",
+  "description": "Federal Order Fulfillment Control Tower PoC",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "next": "^14.0.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "@anthropic-ai/sdk": "^0.24.0",
+    "langfuse": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/node": "^20.10.0"
+  }
+}

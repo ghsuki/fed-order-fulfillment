@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI-Native PRD Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #fff;
+      color: #111827;
+      line-height: 1.6;
+      padding: 48px 24px 80px;
+    }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .header { margin-bottom: 40px; }
+    .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .header .subtitle { font-size: 16px; color: #374151; margin-bottom: 6px; }
+    .header .meta { font-size: 13px; color: #6B7280; }
+
+    /* CARD */
+    .card {
+      border: 1px solid #E5E7EB;
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    /* FORM */
+    .form-card { margin-bottom: 32px; }
+
+    .field { margin-bottom: 20px; }
+    .field label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #111827;
+    }
+    .field input,
+    .field textarea {
+      width: 100%;
+      border: 1px solid #E5E7EB;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: 14px;
+      color: #111827;
+      outline: none;
+      transition: border-color 0.15s;
+      resize: vertical;
+    }
+    .field input:focus,
+    .field textarea:focus { border-color: #2563EB; }
+    .field input.error,
+    .field textarea.error { border-color: #EF4444; }
+    .field .inline-error {
+      font-size: 12px;
+      color: #EF4444;
+      margin-top: 4px;
+      display: none;
+    }
+    .field .inline-error.visible { display: block; }
+
+    .btn-primary {
+      width: 100%;
+      height: 48px;
+      background: #2563EB;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-primary:hover:not(:disabled) { background: #1D4ED8; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* LOADING */
+    .loading-wrap {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      font-size: 14px;
+      color: #6B7280;
+    }
+    .loading-wrap.visible { display: flex; }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid #E5E7EB;
+      border-top-color: #2563EB;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ERROR BANNER */
+    .error-banner {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #B91C1C;
+    }
+    .error-banner.visible { display: block; }
+
+    /* RESULTS */
+    #results { display: none; }
+    #results.visible { display: block; }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .results-header h2 { font-size: 20px; font-weight: 700; }
+
+    /* COLLAPSIBLE SECTION */
+    .section { margin-bottom: 20px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 16px 16px 0 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .section-header.collapsed { border-radius: 16px; }
+    .section-header h3 { font-size: 16px; font-weight: 600; }
+    .section-chevron {
+      font-size: 12px;
+      color: #6B7280;
+      transition: transform 0.2s;
+    }
+    .section-header.collapsed .section-chevron { transform: rotate(-90deg); }
+    .section-body {
+      border: 1px solid #E5E7EB;
+      border-top: none;
+      border-radius: 0 0 16px 16px;
+      padding: 24px;
+    }
+    .section-body.hidden { display: none; }
+
+    /* SUBSECTION */
+    .subsection { margin-bottom: 24px; }
+    .subsection:last-child { margin-bottom: 0; }
+    .subsection-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #6B7280;
+      margin-bottom: 12px;
+    }
+
+    /* TABLE */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .data-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      font-weight: 600;
+      font-size: 12px;
+      color: #374151;
+    }
+    .data-table td {
+      padding: 8px 12px;
+      border: 1px solid #E5E7EB;
+      vertical-align: top;
+    }
+    .data-table tr:nth-child(even) td { background: #F9FAFB; }
+
+    /* CHIP LIST */
+    .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      display: inline-block;
+      padding: 3px 10px;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .chip.red {
+      background: #FEF2F2;
+      color: #B91C1C;
+    }
+
+    /* OUTPUT CARD */
+    .output-card {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .output-card .output-name { font-weight: 600; font-size: 14px; margin-bottom: 8px; }
+    .output-card .output-format { font-size: 13px; color: #6B7280; margin-bottom: 10px; }
+
+    /* NUMBERED LIST */
+    .numbered-list { list-style: none; }
+    .numbered-list li {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .numbered-list li:last-child { margin-bottom: 0; }
+    .num-badge {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      background: #2563EB;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .num-content { flex: 1; }
+
+    /* LABELLED ROW */
+    .label-row { margin-bottom: 8px; font-size: 14px; }
+    .label-row:last-child { margin-bottom: 0; }
+    .label-row .lbl { font-weight: 600; color: #374151; margin-right: 6px; }
+
+    /* QUALITY CRITERIA GRID */
+    .criteria-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 540px) { .criteria-grid { grid-template-columns: 1fr; } }
+    .criteria-card {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 10px;
+      padding: 16px;
+      position: relative;
+    }
+    .criteria-card .criteria-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      padding-right: 90px;
+    }
+    .launch-badge {
+      position: absolute;
+      top: 12px; right: 12px;
+      background: #FEF2F2;
+      color: #B91C1C;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid #FECACA;
+      white-space: nowrap;
+    }
+
+    /* FAILURE MODES ACCORDION */
+    .accordion-item { border: 1px solid #E5E7EB; border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+    .accordion-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #F9FAFB;
+      cursor: pointer;
+      user-select: none;
+      gap: 12px;
+    }
+    .accordion-header-left { display: flex; align-items: center; gap: 10px; }
+    .accordion-title { font-size: 14px; font-weight: 600; }
+    .severity-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .severity-1 { background: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
+    .severity-2 { background: #FFF7ED; color: #C2410C; border: 1px solid #FED7AA; }
+    .severity-3 { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+    .severity-4 { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .severity-5 { background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0; }
+    .accordion-chevron { font-size: 11px; color: #6B7280; transition: transform 0.2s; }
+    .accordion-item.open .accordion-chevron { transform: rotate(180deg); }
+    .accordion-body { padding: 14px 16px; display: none; border-top: 1px solid #E5E7EB; }
+    .accordion-item.open .accordion-body { display: block; }
+
+    /* EVAL PLAN */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    @media (max-width: 480px) { .two-col { grid-template-columns: 1fr; } }
+    .info-block {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .info-block .info-label { font-size: 12px; font-weight: 600; color: #6B7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .info-block .info-value { font-size: 14px; color: #111827; }
+
+    .adversarial-list { list-style: none; }
+    .adversarial-list li {
+      padding: 10px 14px;
+      border-left: 3px solid #EF4444;
+      background: #FEF2F2;
+      border-radius: 0 6px 6px 0;
+      margin-bottom: 8px;
+      font-size: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .adversarial-list li:last-child { margin-bottom: 0; }
+    .adversarial-num { font-weight: 700; color: #B91C1C; flex-shrink: 0; }
+
+    /* BOTTOM ACTIONS */
+    .result-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .btn-secondary {
+      flex: 1;
+      min-width: 160px;
+      height: 44px;
+      background: #fff;
+      color: #111827;
+      border: 1px solid #E5E7EB;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-secondary:hover { background: #F9FAFB; border-color: #D1D5DB; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+      <h1>AI-Native PRD Generator</h1>
+      <p class="subtitle">Generate quality criteria, failure modes, and eval plans for AI features — in under 60 seconds.</p>
+      <p class="meta">Based on the AI-native PRD framework. Powered by Claude.</p>
+    </div>
+
+    <!-- FORM -->
+    <div class="card form-card">
+      <form id="prd-form" novalidate>
+
+        <div class="field">
+          <label for="featureName">Feature Name</label>
+          <input type="text" id="featureName" name="featureName"
+            placeholder="e.g. Resume Screener, Smart Reply, Risk Classifier">
+          <div class="inline-error" id="err-featureName">Please enter a feature name.</div>
+        </div>
+
+        <div class="field">
+          <label for="featureDescription">Feature Description</label>
+          <textarea id="featureDescription" name="featureDescription" rows="5"
+            placeholder="What does this AI feature do? Who uses it? What does it produce as output? (2-3 sentences)"></textarea>
+          <div class="inline-error" id="err-featureDescription">Please describe the feature.</div>
+        </div>
+
+        <div class="field">
+          <label for="companyContext">Company + Product Context</label>
+          <input type="text" id="companyContext" name="companyContext"
+            placeholder="e.g. TalentScope is a Pune-based HR-tech startup building AI-powered hiring tools for Indian mid-market companies.">
+          <div class="inline-error" id="err-companyContext">Please provide company context.</div>
+        </div>
+
+        <div class="field">
+          <label for="userProblem">User Problem</label>
+          <input type="text" id="userProblem" name="userProblem"
+            placeholder="e.g. HR managers spend 60-70% of their time on manual resume screening with no systematic way to do it at scale.">
+          <div class="inline-error" id="err-userProblem">Please describe the user problem.</div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submit-btn">Generate AI-native PRD</button>
+
+        <div class="loading-wrap" id="loading">
+          <div class="spinner"></div>
+          <span>Claude is generating your PRD — this can take up to 60 seconds…</span>
+        </div>
+
+        <div class="error-banner" id="error-banner"></div>
+
+      </form>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="results">
+
+      <!-- Section 1: Input / Output Contract -->
+      <div class="section">
+        <div class="section-header" data-section="io">
+          <h3>Input / Output Contract</h3>
+          <span class="section-chevron">▼</span>
+        </div>
+        <div class="section-body" id="body-io">
+
+          <div class="subsection">
+            <div class="subsection-title">Inputs</div>
+            <table class="data-table" id="inputs-table">
+              <thead>
+                <tr><th>Name</th><th>Format</th><th>Constraints</th><th>Required</th></tr>
+              </thead>
+              <tbody id="inputs-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="subsection">
+            <div class="subsection-title">Outputs</div>
+            <div id="outputs-container"></div>
+          </div>
+
+          <div class="subsection">
+            <div class="subsection-title">Bad Input Handling</div>
+            <ol class="numbered-list" id="bad-input-list"></ol>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Section 2: Quality Criteria -->
+      <div class="section">
+        <div class="section-header" data-section="quality">
+          <h3>Quality Criteria</h3>
+          <span class="section-chevron">▼</span>
+        </div>
+        <div class="section-body" id="body-quality">
+          <div class="criteria-grid" id="criteria-grid"></div>
+        </div>
+      </div>
+
+      <!-- Section 3: Failure Modes -->
+      <div class="section">
+        <div class="section-header" data-section="failures">
+          <h3>Failure Modes</h3>
+          <span class="section-chevron">▼</span>
+        </div>
+        <div class="section-body" id="body-failures">
+          <div id="failure-accordion"></div>
+        </div>
+      </div>
+
+      <!-- Section 4: Eval Plan -->
+      <div class="section">
+        <div class="section-header" data-section="eval">
+          <h3>Eval Plan</h3>
+          <span class="section-chevron">▼</span>
+        </div>
+        <div class="section-body" id="body-eval">
+
+          <div class="two-col">
+            <div class="info-block">
+              <div class="info-label">Owner</div>
+              <div class="info-value" id="eval-owner"></div>
+            </div>
+            <div class="info-block">
+              <div class="info-label">Cadence</div>
+              <div class="info-value" id="eval-cadence"></div>
+            </div>
+          </div>
+
+          <div class="two-col">
+            <div class="info-block">
+              <div class="info-label">Pass Threshold</div>
+              <div class="info-value" id="eval-threshold"></div>
+            </div>
+            <div class="info-block">
+              <div class="info-label">Failure Action</div>
+              <div class="info-value" id="eval-failure-action"></div>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <div class="subsection-title">Test Categories</div>
+            <div class="chip-list" id="test-categories"></div>
+          </div>
+
+          <div class="subsection">
+            <div class="subsection-title">Adversarial Cases</div>
+            <ol class="adversarial-list" id="adversarial-list"></ol>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Bottom actions -->
+      <div class="result-actions">
+        <button class="btn-secondary" id="copy-btn">Copy as Markdown</button>
+        <button class="btn-secondary" id="reset-btn">Generate Another</button>
+      </div>
+
+    </div><!-- /#results -->
+
+  </div><!-- /.container -->
+
+  <script>
+    let currentPrd = null;
+
+    // ── Collapsible sections ──────────────────────────────────────────────────
+    document.querySelectorAll('.section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const id = header.dataset.section;
+        const body = document.getElementById('body-' + id);
+        const collapsed = header.classList.toggle('collapsed');
+        body.classList.toggle('hidden', collapsed);
+      });
+    });
+
+    // ── Form submit ───────────────────────────────────────────────────────────
+    document.getElementById('prd-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const fields = ['featureName', 'featureDescription', 'companyContext', 'userProblem'];
+      let valid = true;
+
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        const err = document.getElementById('err-' + id);
+        const empty = !el.value.trim();
+        el.classList.toggle('error', empty);
+        err.classList.toggle('visible', empty);
+        if (empty) valid = false;
+      });
+
+      if (!valid) return;
+
+      setLoading(true);
+      hideError();
+      hideResults();
+
+      try {
+        const res = await fetch('/api/generate-prd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            featureName: document.getElementById('featureName').value.trim(),
+            featureDescription: document.getElementById('featureDescription').value.trim(),
+            companyContext: document.getElementById('companyContext').value.trim(),
+            userProblem: document.getElementById('userProblem').value.trim(),
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          showError(data.error || `Server error (${res.status})`);
+          return;
+        }
+
+        currentPrd = data.prd;
+        renderResults(data.prd);
+        showResults();
+
+      } catch (err) {
+        showError('Network error: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    // Clear field errors on input
+    ['featureName', 'featureDescription', 'companyContext', 'userProblem'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        document.getElementById(id).classList.remove('error');
+        document.getElementById('err-' + id).classList.remove('visible');
+      });
+    });
+
+    // ── State helpers ─────────────────────────────────────────────────────────
+    function setLoading(on) {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = on;
+      btn.textContent = on ? 'Generating…' : 'Generate AI-native PRD';
+      document.getElementById('loading').classList.toggle('visible', on);
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('error-banner');
+      el.textContent = msg;
+      el.classList.add('visible');
+    }
+
+    function hideError() {
+      document.getElementById('error-banner').classList.remove('visible');
+    }
+
+    function showResults() {
+      const el = document.getElementById('results');
+      el.classList.add('visible');
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function hideResults() {
+      document.getElementById('results').classList.remove('visible');
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    function esc(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function renderResults(prd) {
+      const io = prd.inputOutputContract;
+
+      // Inputs table
+      const tbody = document.getElementById('inputs-tbody');
+      tbody.innerHTML = (io.inputs || []).map(inp => `
+        <tr>
+          <td>${esc(inp.name)}</td>
+          <td>${esc(inp.format)}</td>
+          <td>${esc(inp.constraints)}</td>
+          <td>${inp.required ? 'Yes' : 'No'}</td>
+        </tr>`).join('');
+
+      // Outputs
+      const outContainer = document.getElementById('outputs-container');
+      outContainer.innerHTML = (io.outputs || []).map(out => `
+        <div class="output-card">
+          <div class="output-name">${esc(out.name)}</div>
+          <div class="output-format">${esc(out.format)}</div>
+          <div class="chip-list">
+            ${(out.alwaysPresent || []).map(f => `<span class="chip">${esc(f)}</span>`).join('')}
+          </div>
+        </div>`).join('');
+
+      // Bad input handling
+      const badList = document.getElementById('bad-input-list');
+      badList.innerHTML = (io.badInputHandling || []).map((b, i) => `
+        <li>
+          <span class="num-badge">${i + 1}</span>
+          <div class="num-content">
+            <div class="label-row"><span class="lbl">Scenario:</span>${esc(b.scenario)}</div>
+            <div class="label-row"><span class="lbl">System Behavior:</span>${esc(b.systemBehavior)}</div>
+            <div class="label-row"><span class="lbl">User Message:</span>${esc(b.userMessage)}</div>
+          </div>
+        </li>`).join('');
+
+      // Quality criteria
+      const grid = document.getElementById('criteria-grid');
+      grid.innerHTML = (prd.qualityCriteria || []).map(c => `
+        <div class="criteria-card">
+          ${c.launchBlocker ? '<span class="launch-badge">Launch Blocker</span>' : ''}
+          <div class="criteria-title">${esc(c.criterion)}</div>
+          <div class="label-row"><span class="lbl">Threshold:</span>${esc(c.threshold)}</div>
+          <div class="label-row"><span class="lbl">Measurement:</span>${esc(c.measurementMethod)}</div>
+        </div>`).join('');
+
+      // Failure modes accordion
+      const accordion = document.getElementById('failure-accordion');
+      const severityLabels = ['Critical', 'High', 'High', 'Medium', 'Low'];
+      const severityClasses = ['severity-1', 'severity-2', 'severity-3', 'severity-4', 'severity-5'];
+      accordion.innerHTML = (prd.failureModes || []).map((fm, i) => `
+        <div class="accordion-item open">
+          <div class="accordion-header">
+            <div class="accordion-header-left">
+              <span class="accordion-title">${esc(fm.name)}</span>
+              <span class="severity-badge ${severityClasses[i]}">${severityLabels[i]}</span>
+            </div>
+            <span class="accordion-chevron">▼</span>
+          </div>
+          <div class="accordion-body">
+            <div class="label-row"><span class="lbl">Trigger:</span>${esc(fm.trigger)}</div>
+            <div class="label-row"><span class="lbl">User Experience:</span>${esc(fm.userExperience)}</div>
+            <div class="label-row"><span class="lbl">Logged:</span>${esc(fm.logged)}</div>
+            <div class="label-row"><span class="lbl">Escalation:</span>${esc(fm.escalation)}</div>
+          </div>
+        </div>`).join('');
+
+      // Accordion click handlers
+      accordion.querySelectorAll('.accordion-header').forEach(h => {
+        h.addEventListener('click', () => {
+          h.closest('.accordion-item').classList.toggle('open');
+        });
+      });
+
+      // Eval plan
+      const ep = prd.evalPlan;
+      document.getElementById('eval-owner').textContent = ep.owner || '';
+      document.getElementById('eval-cadence').textContent = ep.cadence || '';
+      document.getElementById('eval-threshold').textContent = ep.passThreshold || '';
+      document.getElementById('eval-failure-action').textContent = ep.failureAction || '';
+
+      document.getElementById('test-categories').innerHTML =
+        (ep.testCategories || []).map(c => `<span class="chip">${esc(c)}</span>`).join('');
+
+      document.getElementById('adversarial-list').innerHTML =
+        (ep.adversarialCases || []).map((c, i) => `
+          <li>
+            <span class="adversarial-num">${i + 1}.</span>
+            <span>${esc(c)}</span>
+          </li>`).join('');
+
+      // Reset section collapse state — all expanded
+      document.querySelectorAll('.section-header').forEach(h => h.classList.remove('collapsed'));
+      document.querySelectorAll('.section-body').forEach(b => b.classList.remove('hidden'));
+    }
+
+    // ── Copy as Markdown ──────────────────────────────────────────────────────
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      if (!currentPrd) return;
+      const md = buildMarkdown(currentPrd);
+      navigator.clipboard.writeText(md).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy as Markdown'; }, 2000);
+      });
+    });
+
+    function buildMarkdown(prd) {
+      const lines = [];
+      const io = prd.inputOutputContract;
+      const ep = prd.evalPlan;
+
+      lines.push(`# AI-Native PRD: ${prd.featureName}`);
+      lines.push('');
+
+      // Section 1
+      lines.push('## Input / Output Contract');
+      lines.push('');
+      lines.push('### Inputs');
+      lines.push('');
+      lines.push('| Name | Format | Constraints | Required |');
+      lines.push('|------|--------|-------------|----------|');
+      (io.inputs || []).forEach(i => {
+        lines.push(`| ${i.name} | ${i.format} | ${i.constraints} | ${i.required ? 'Yes' : 'No'} |`);
+      });
+      lines.push('');
+
+      lines.push('### Outputs');
+      lines.push('');
+      (io.outputs || []).forEach(o => {
+        lines.push(`**${o.name}** — ${o.format}`);
+        lines.push('');
+        lines.push('Always present: ' + (o.alwaysPresent || []).join(', '));
+        lines.push('');
+      });
+
+      lines.push('### Bad Input Handling');
+      lines.push('');
+      (io.badInputHandling || []).forEach((b, i) => {
+        lines.push(`**${i + 1}. ${b.scenario}**`);
+        lines.push(`- System Behavior: ${b.systemBehavior}`);
+        lines.push(`- User Message: ${b.userMessage}`);
+        lines.push('');
+      });
+
+      // Section 2
+      lines.push('## Quality Criteria');
+      lines.push('');
+      (prd.qualityCriteria || []).forEach((c, i) => {
+        const blocker = c.launchBlocker ? ' ⚠️ Launch Blocker' : '';
+        lines.push(`### ${i + 1}. ${c.criterion}${blocker}`);
+        lines.push(`- **Threshold:** ${c.threshold}`);
+        lines.push(`- **Measurement:** ${c.measurementMethod}`);
+        lines.push('');
+      });
+
+      // Section 3
+      lines.push('## Failure Modes');
+      lines.push('');
+      (prd.failureModes || []).forEach((fm, i) => {
+        lines.push(`### ${i + 1}. ${fm.name}`);
+        lines.push(`- **Trigger:** ${fm.trigger}`);
+        lines.push(`- **User Experience:** ${fm.userExperience}`);
+        lines.push(`- **Logged:** ${fm.logged}`);
+        lines.push(`- **Escalation:** ${fm.escalation}`);
+        lines.push('');
+      });
+
+      // Section 4
+      lines.push('## Eval Plan');
+      lines.push('');
+      lines.push(`- **Owner:** ${ep.owner}`);
+      lines.push(`- **Cadence:** ${ep.cadence}`);
+      lines.push(`- **Pass Threshold:** ${ep.passThreshold}`);
+      lines.push(`- **Failure Action:** ${ep.failureAction}`);
+      lines.push('');
+      lines.push('**Test Categories:** ' + (ep.testCategories || []).join(', '));
+      lines.push('');
+      lines.push('**Adversarial Cases:**');
+      (ep.adversarialCases || []).forEach((c, i) => {
+        lines.push(`${i + 1}. ${c}`);
+      });
+
+      return lines.join('\n');
+    }
+
+    // ── Generate Another ──────────────────────────────────────────────────────
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      currentPrd = null;
+      hideResults();
+      hideError();
+      ['featureName', 'featureDescription', 'companyContext', 'userProblem'].forEach(id => {
+        document.getElementById(id).value = '';
+        document.getElementById(id).classList.remove('error');
+        document.getElementById('err-' + id).classList.remove('visible');
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>
