@@ -10,7 +10,7 @@ import {
 } from '@/lib/supabase';
 import { validateFulfillmentResult } from '@/lib/validators';
 import { FulfillmentTracer } from '@/lib/langfuse';
-import type { ScenarioRequest, ScenarioResponse, FulfillmentResult, ContextPayload, FederalOrder } from '@/lib/types';
+import type { ScenarioRequest, ScenarioResponse, FulfillmentResult, ContextPayload, Order, Segment } from '@/lib/types';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -62,10 +62,10 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
     tracer = new FulfillmentTracer(orderId, triggerMode as 'auto' | 'manual');
     const trace = tracer.createTrace();
 
-    // Verify order exists and is in open or at_risk status
+    // Verify order exists and is in open or at_risk status (multi-segment v2.1.0)
     const supabase = getSupabase();
     const { data: orderData, error: orderError } = await supabase
-      .from('federal_orders')
+      .from('orders')
       .select('*')
       .eq('order_id', orderId)
       .single();
@@ -83,9 +83,25 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
       };
     }
 
-    const federalOrder = orderData as unknown as FederalOrder;
+    const order = orderData as unknown as Order;
 
-    if (federalOrder.status === 'fulfilled' || federalOrder.status === 'rejected') {
+    // Validate segment exists (HC: never infer segment, always validate)
+    const validSegments: Segment[] = ['federal', 'commercial', 'distributor', 'd2c'];
+    if (!validSegments.includes(order.segment as Segment)) {
+      tracer.logFailureEvent('invalid_segment', {
+        order_id: orderId,
+        segment: order.segment,
+        timestamp: new Date().toISOString(),
+      });
+      return {
+        success: false,
+        error: "This order's segment is not recognized. Please update the order segment and try again.",
+        status_code: 400,
+        message: 'Bad Request',
+      };
+    }
+
+    if (order.status === 'fulfilled' || order.status === 'rejected') {
       return {
         success: false,
         error: 'This order has already been processed. Navigate to order history to view its fulfillment record.',
@@ -112,7 +128,7 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
       trace,
       contextDuration,
       contextPayload.cm_inventory.length,
-      contextPayload.committed_orders.length,
+      contextPayload.competing_orders.length,
       contextPayload
     );
 
@@ -129,13 +145,15 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
     if (contextPayload.cm_inventory.length === 0) {
       const result: FulfillmentResult = {
         order_id: orderId,
+        segment: order.segment,
+        priority_tier: order.priority_tier || 0,
         risk_assessment: {
           risk_score: 'critical',
           risk_reason: 'No inventory found across any CM for this SKU.',
         },
         scenarios: [],
         recommendation: 'No inventory available to fulfill order. Contact procurement.',
-        units_unresolvable: contextPayload.federal_order.qty_required,
+        units_unresolvable: contextPayload.order.qty_required,
       };
 
       return {
@@ -160,8 +178,8 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
       try {
         const claudeStart = Date.now();
         const response = await anthropic.messages.create({
-          model: 'claude-opus-4-8',
-          max_tokens: 4096,
+          model: 'claude-opus-5-5',
+          max_tokens: 8192,
           system: systemPrompt,
           messages: [
             {
@@ -193,8 +211,35 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
           }
           jsonText = jsonText.trim();
 
-          result = JSON.parse(jsonText);
-          console.log('✓ Successfully parsed Claude response');
+          try {
+            result = JSON.parse(jsonText);
+            console.log('✓ Successfully parsed Claude response');
+          } catch (parseErr) {
+            // If initial parse fails, try multiple fixes
+            console.log('Initial JSON parse failed, attempting to fix...');
+
+            // Try fix 1: escape unescaped quotes in string values (but not structural quotes)
+            try {
+              let fixedJson = jsonText;
+              // Replace newlines and tabs with spaces
+              fixedJson = fixedJson.replace(/[\r\n\t]+/g, ' ');
+              // Fix doubled quotes that might appear in plan_summary or other fields
+              fixedJson = fixedJson.replace(/([^\\])"([^:,\]}])/g, '$1\\"$2');
+              result = JSON.parse(fixedJson);
+              console.log('✓ Successfully parsed Claude response after quote fixing');
+            } catch (fix1Err) {
+              // Try fix 2: truncate to last complete object
+              console.log('Quote fixing failed, trying truncation...');
+              const lastBrace = jsonText.lastIndexOf('}');
+              if (lastBrace > 100) {
+                const truncated = jsonText.substring(0, lastBrace + 1);
+                result = JSON.parse(truncated);
+                console.log('✓ Successfully parsed Claude response after truncation');
+              } else {
+                throw fix1Err;
+              }
+            }
+          }
         } catch (parseError) {
           console.error('Failed to parse Claude response:', parseError);
           const textContent = rawContent as any;
@@ -208,7 +253,7 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
           contextPayload,
           (rawContent as any).text,
           {
-            model: 'claude-sonnet-5',
+            model: 'claude-opus-5-5',
             tokens_input: response.usage.input_tokens,
             tokens_output: response.usage.output_tokens,
             latency_ms: claudeDuration,
@@ -278,14 +323,25 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
       };
     }
 
-    // Write scenarios to Supabase
+    // Write scenarios to Supabase + scenario_disruptions audit trail
     const writeStart = Date.now();
     let writtenCount = 0;
+    let disruptionsWrittenCount = 0;
 
     if (claudeResponse.scenarios.length > 0) {
       for (const scenario of claudeResponse.scenarios) {
-        await writeFulfillmentScenario(orderId, scenario, tracer.getTraceId());
+        // writeFulfillmentScenario now handles scenario_disruptions writes for each rebalancing step
+        await writeFulfillmentScenario(
+          orderId,
+          order.segment,
+          scenario,
+          claudeResponse,
+          tracer.getTraceId()
+        );
         writtenCount++;
+
+        // Count disruptions written (for logging)
+        disruptionsWrittenCount += scenario.steps.filter((s) => s.action === 'rebalance_commitment').length;
       }
     }
 
@@ -295,11 +351,14 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
     // Update order risk score
     await updateOrderRiskScore(orderId, claudeResponse.risk_assessment.risk_score);
 
-    // Attach scores and tags
+    // Attach scores and tags (v2.1.0 multi-segment)
     const latencySecs = (Date.now() - startTime) / 1000;
     tracer.attachScores(trace, {
+      tier_ordering_pass: validationErrors.filter((e) => e.type === 'tier_ordering').length === 0 ? 1 : 0,
       compliance_pass: validationErrors.filter((e) => e.type === 'compliance').length === 0 ? 1 : 0,
       qty_assertion_pass: validationErrors.filter((e) => e.type === 'qty_assertion').length === 0 ? 1 : 0,
+      disruption_traced: validationErrors.filter((e) => e.type === 'disruption_visibility').length === 0 ? 1 : 0,
+      d2c_constraint_pass: validationErrors.filter((e) => e.type === 'd2c_constraint').length === 0 ? 1 : 0,
       hallucination_pass: validationErrors.filter((e) => e.type === 'hallucination').length === 0 ? 1 : 0,
       schema_valid: validationErrors.filter((e) => e.type === 'schema').length === 0 ? 1 : 0,
       latency_within_sla: latencySecs <= 5 ? 1 : 0,
@@ -307,11 +366,14 @@ async function handleScenarioRequest(request: NextRequest): Promise<ScenarioResp
 
     tracer.attachTags(trace, {
       order_id: orderId,
+      segment: order.segment,
+      priority_tier: order.priority_tier || 0,
       trigger_mode: triggerMode as any,
       risk_score: claudeResponse.risk_assessment.risk_score,
       levers_used: claudeResponse.scenarios.flatMap((s) => s.levers_used),
       feasibility: claudeResponse.scenarios.map((s) => s.feasibility).join(','),
-      compliance_rule: contextPayload.federal_order.compliance_rule,
+      compliance_framework: contextPayload.segment_policy.compliance_framework,
+      primary_sla_driver: contextPayload.segment_policy.primary_sla_driver,
     });
 
     await tracer.flush();

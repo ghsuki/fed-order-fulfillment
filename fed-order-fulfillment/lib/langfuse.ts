@@ -127,14 +127,20 @@ export class FulfillmentTracer {
   attachScores(
     trace: any,
     scores: {
+      tier_ordering_pass: number;
       compliance_pass: number;
       qty_assertion_pass: number;
+      disruption_traced: number;
+      d2c_constraint_pass: number;
       hallucination_pass: number;
       schema_valid: number;
-      lever_accuracy?: number;
       latency_within_sla?: number;
     }
   ) {
+    trace.score({
+      name: 'tier_ordering_pass',
+      value: scores.tier_ordering_pass,
+    });
     trace.score({
       name: 'compliance_pass',
       value: scores.compliance_pass,
@@ -144,6 +150,14 @@ export class FulfillmentTracer {
       value: scores.qty_assertion_pass,
     });
     trace.score({
+      name: 'disruption_traced',
+      value: scores.disruption_traced,
+    });
+    trace.score({
+      name: 'd2c_constraint_pass',
+      value: scores.d2c_constraint_pass,
+    });
+    trace.score({
       name: 'hallucination_pass',
       value: scores.hallucination_pass,
     });
@@ -151,12 +165,6 @@ export class FulfillmentTracer {
       name: 'schema_valid',
       value: scores.schema_valid,
     });
-    if (scores.lever_accuracy !== undefined) {
-      trace.score({
-        name: 'lever_accuracy',
-        value: scores.lever_accuracy,
-      });
-    }
     if (scores.latency_within_sla !== undefined) {
       trace.score({
         name: 'latency_within_sla',
@@ -169,20 +177,26 @@ export class FulfillmentTracer {
     trace: any,
     tags: {
       order_id: string;
+      segment: string;
+      priority_tier: number;
       trigger_mode: string;
       risk_score: string;
       levers_used: string[];
       feasibility: string;
-      compliance_rule: string;
+      compliance_framework: string;
+      primary_sla_driver: string;
     }
   ) {
     trace.update({
       tags: [
         ...tags.feasibility.split(',').map((f) => `feasibility:${f.trim()}`),
         `order_id:${tags.order_id}`,
+        `segment:${tags.segment}`,
+        `priority_tier:${tags.priority_tier}`,
         `trigger_mode:${tags.trigger_mode}`,
         `risk_score:${tags.risk_score}`,
-        `compliance_rule:${tags.compliance_rule}`,
+        `compliance_framework:${tags.compliance_framework}`,
+        `primary_sla_driver:${tags.primary_sla_driver}`,
         ...tags.levers_used.map((l) => `lever:${l}`),
       ],
     });

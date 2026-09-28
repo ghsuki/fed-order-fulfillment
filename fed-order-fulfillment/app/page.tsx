@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { FederalOrder, FulfillmentResult } from '@/lib/types';
+import type { Order, FulfillmentResult, Segment } from '@/lib/types';
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabaseClient() {
@@ -30,6 +30,31 @@ function getRiskBadgeColor(riskScore: string | undefined) {
   }
 }
 
+function getSegmentBadgeColor(segment: Segment): string {
+  switch (segment) {
+    case 'federal':
+      return 'badge-federal';
+    case 'commercial':
+      return 'badge-commercial';
+    case 'distributor':
+      return 'badge-distributor';
+    case 'd2c':
+      return 'badge-d2c';
+    default:
+      return 'badge-default';
+  }
+}
+
+function getSegmentLabel(segment: Segment): string {
+  const labels: Record<Segment, string> = {
+    federal: 'Federal (Tier 1)',
+    commercial: 'Commercial (Tier 2)',
+    distributor: 'Distributor (Tier 3)',
+    d2c: 'D2C (Tier 4)',
+  };
+  return labels[segment] || segment;
+}
+
 function ScenarioModal({ scenario, order, onClose }: { scenario: any; order: any; onClose: () => void }) {
   if (!scenario) return null;
 
@@ -55,6 +80,22 @@ function ScenarioModal({ scenario, order, onClose }: { scenario: any; order: any
               </tr>
               <tr>
                 <td>
+                  <strong>Segment</strong>
+                </td>
+                <td>
+                  <span className={`badge ${getSegmentBadgeColor(order.segment)}`}>
+                    {getSegmentLabel(order.segment)}
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <strong>Priority Tier</strong>
+                </td>
+                <td>{order.priority_tier || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td>
                   <strong>SKU</strong>
                 </td>
                 <td>{order.sku}</td>
@@ -73,10 +114,26 @@ function ScenarioModal({ scenario, order, onClose }: { scenario: any; order: any
               </tr>
               <tr>
                 <td>
-                  <strong>Compliance Rule</strong>
+                  <strong>Compliance Requirements</strong>
                 </td>
-                <td>{order.compliance_rule}</td>
+                <td>{order.compliance_requirements && order.compliance_requirements.length > 0 ? order.compliance_requirements.join(', ') : '(None)'}</td>
               </tr>
+              {order.contract_value_usd && (
+                <tr>
+                  <td>
+                    <strong>Contract Value</strong>
+                  </td>
+                  <td>${order.contract_value_usd.toLocaleString()}</td>
+                </tr>
+              )}
+              {order.region && (
+                <tr>
+                  <td>
+                    <strong>Region</strong>
+                  </td>
+                  <td>{order.region}</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -178,11 +235,11 @@ function ScenarioModal({ scenario, order, onClose }: { scenario: any; order: any
 }
 
 export default function Dashboard() {
-  const [orders, setOrders] = useState<FederalOrder[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [scenarios, setScenarios] = useState<Map<string, FulfillmentResult>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedScenario, setSelectedScenario] = useState<any>(null);
-  const [selectedOrder, setSelectedOrder] = useState<FederalOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [generatingOrder, setGeneratingOrder] = useState<string | null>(null);
 
   useEffect(() => {
@@ -195,7 +252,7 @@ export default function Dashboard() {
       const response = await fetch('/api/orders');
       if (response.ok) {
         const data = await response.json();
-        setOrders(data as FederalOrder[]);
+        setOrders(data as Order[]);
       } else {
         console.error('Failed to fetch orders:', response.statusText);
       }
@@ -206,7 +263,7 @@ export default function Dashboard() {
     }
   }
 
-  async function runScenario(order: FederalOrder) {
+  async function runScenario(order: Order) {
     setGeneratingOrder(order.order_id);
     try {
       const response = await fetch('/api/scenario', {
@@ -249,14 +306,16 @@ export default function Dashboard() {
   return (
     <>
       <div className="card">
-        <div className="card-header">Federal Orders</div>
+        <div className="card-header">Multi-Segment Orders</div>
         {orders.length === 0 ? (
-          <p className="text-center">No federal orders found.</p>
+          <p className="text-center">No orders found.</p>
         ) : (
           <table>
             <thead>
               <tr>
                 <th>Order ID</th>
+                <th>Segment</th>
+                <th>Tier</th>
                 <th>SKU</th>
                 <th>SKU Name</th>
                 <th>Qty Required</th>
@@ -270,6 +329,12 @@ export default function Dashboard() {
               {orders.map((order) => (
                 <tr key={order.order_id}>
                   <td>{order.order_id}</td>
+                  <td>
+                    <span className={`badge ${getSegmentBadgeColor(order.segment)}`}>
+                      {order.segment}
+                    </span>
+                  </td>
+                  <td>{order.priority_tier || 'N/A'}</td>
                   <td>{order.sku}</td>
                   <td>{(order as any).sku_name || order.sku}</td>
                   <td>{order.qty_required}</td>

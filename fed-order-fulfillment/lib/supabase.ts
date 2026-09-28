@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { ContextPayload, FederalOrder, CMInventory, CommittedOrder } from './types';
+import type { ContextPayload, Order, CMInventory, CompetingOrder, SegmentPolicy, FulfillmentResult, ScenarioDisruption } from './types';
 
 let supabaseClient: ReturnType<typeof createClient> | null = null;
 
@@ -18,41 +18,44 @@ export function getSupabase() {
   return supabaseClient;
 }
 
-// Assemble context payload for Claude from Supabase
+// Assemble context payload for Claude from Supabase (v2.1.0 multi-segment)
 export async function assembleContextPayload(orderId: string): Promise<ContextPayload | null> {
   const supabase = getSupabase();
 
-  // Fetch federal order
+  // Fetch order (multi-segment)
   const { data: orderData, error: orderError } = await supabase
-    .from('federal_orders')
+    .from('orders')
     .select('*')
     .eq('order_id', orderId)
     .single();
 
   if (orderError || !orderData) {
-    console.error('Federal order not found:', orderId);
+    console.error('Order not found:', orderId);
     return null;
   }
 
-  const federalOrder = orderData as FederalOrder;
+  const order = orderData as Order;
 
-  // Fetch CM inventory for this SKU
+  // Fetch segment_policies for this order's segment
+  const { data: policyData, error: policyError } = await supabase
+    .from('segment_policies')
+    .select('*')
+    .eq('segment', order.segment)
+    .single();
+
+  if (policyError || !policyData) {
+    console.error('Segment policy not found for segment:', order.segment);
+    return null;
+  }
+
+  const segmentPolicy = policyData as SegmentPolicy;
+
+  // Fetch CM inventory for this SKU using v_cm_inventory_context view
+  // (coalesces row-level overrides with CM defaults for compliance_frameworks_met and lead_time_days)
   const { data: inventoryData, error: inventoryError } = await supabase
-    .from('cm_inventory')
-    .select(
-      `
-      inventory_id,
-      cm_id,
-      sku,
-      stock_type,
-      qty_available,
-      taa_compliant,
-      hold_status,
-      est_completion_date,
-      contract_manufacturers (cm_name, country, lead_time_days)
-    `
-    )
-    .eq('sku', federalOrder.sku);
+    .from('v_cm_inventory_context')
+    .select('*')
+    .eq('sku', order.sku);
 
   if (inventoryError) {
     console.error('Error fetching inventory:', inventoryError);
@@ -62,52 +65,73 @@ export async function assembleContextPayload(orderId: string): Promise<ContextPa
   const cmInventory: CMInventory[] = (inventoryData || []).map((row: any) => ({
     inventory_id: row.inventory_id,
     cm_id: row.cm_id,
-    cm_name: row.contract_manufacturers?.cm_name || '',
-    country: row.contract_manufacturers?.country || '',
-    taa_compliant: row.taa_compliant,
+    cm_name: row.cm_name || '',
+    country: row.country || '',
+    compliance_frameworks_met: row.compliance_frameworks_met || [],
     sku: row.sku,
     stock_type: row.stock_type,
     qty_available: row.qty_available,
     hold_status: row.hold_status,
-    lead_time_days: row.contract_manufacturers?.lead_time_days || 0,
+    lead_time_days: row.lead_time_days || 0,
     est_completion_date: row.est_completion_date,
+    updated_at: row.updated_at,
   }));
 
-  // Fetch committed orders for this SKU
-  const { data: committedData, error: committedError } = await supabase
-    .from('committed_orders')
+  // Fetch competing_orders for this SKU (any segment, not just federal/commercial)
+  const { data: competingData, error: competingError } = await supabase
+    .from('competing_orders')
     .select('*')
-    .eq('sku', federalOrder.sku);
+    .eq('sku', order.sku);
 
-  if (committedError) {
-    console.error('Error fetching committed orders:', committedError);
+  if (competingError) {
+    console.error('Error fetching competing orders:', competingError);
     return null;
   }
 
-  const committedOrders: CommittedOrder[] = (committedData || []) as CommittedOrder[];
+  const competingOrders: CompetingOrder[] = (competingData || []) as CompetingOrder[];
 
   return {
-    federal_order: {
-      order_id: federalOrder.order_id,
-      sku: federalOrder.sku,
-      qty_required: federalOrder.qty_required,
-      required_ship_date: federalOrder.required_ship_date,
-      compliance_rule: federalOrder.compliance_rule,
+    order: {
+      order_id: order.order_id,
+      segment: order.segment,
+      priority_tier: order.priority_tier || 0,
+      sku: order.sku,
+      qty_required: order.qty_required,
+      required_ship_date: order.required_ship_date,
+      compliance_requirements: order.compliance_requirements || [],
+      contract_value_usd: order.contract_value_usd,
+      region: order.region,
+    },
+    segment_policy: {
+      segment: segmentPolicy.segment,
+      priority_tier: segmentPolicy.priority_tier,
+      priority_handling: segmentPolicy.priority_handling,
+      compliance_framework: segmentPolicy.compliance_framework,
+      primary_sla_driver: segmentPolicy.primary_sla_driver,
+      cost_of_failure: segmentPolicy.cost_of_failure,
     },
     cm_inventory: cmInventory,
-    committed_orders: committedOrders,
+    competing_orders: competingOrders,
   };
 }
 
-// Write fulfillment scenario to Supabase
-export async function writeFulfillmentScenario(orderId: string, scenarioData: any, langfuseTraceId?: string) {
+// Write fulfillment scenario and scenario_disruptions to Supabase
+export async function writeFulfillmentScenario(
+  orderId: string,
+  segment: string,
+  scenarioData: any,
+  fulfillmentResult: FulfillmentResult,
+  langfuseTraceId?: string
+) {
   const supabase = getSupabase() as any;
 
-  const { data, error } = await supabase
+  // Write fulfillment_scenarios
+  const { data: scenarioWriteData, error: scenarioError } = await supabase
     .from('fulfillment_scenarios')
     .insert([
       {
         order_id: orderId,
+        segment: segment,
         rank: scenarioData.rank,
         levers_used: scenarioData.levers_used,
         plan_summary: scenarioData.plan_summary,
@@ -123,20 +147,63 @@ export async function writeFulfillmentScenario(orderId: string, scenarioData: an
     ])
     .select();
 
-  if (error) {
-    console.error('Error writing scenario to Supabase:', error);
-    throw error;
+  if (scenarioError) {
+    console.error('Error writing scenario to Supabase:', scenarioError);
+    throw scenarioError;
   }
 
-  return data;
+  if (!scenarioWriteData || scenarioWriteData.length === 0) {
+    console.error('No scenario data returned from insert');
+    throw new Error('Failed to write scenario');
+  }
+
+  const scenarioId = scenarioWriteData[0].scenario_id;
+
+  // Write scenario_disruptions for each rebalancing step (Hard Constraint 4: audit trail)
+  const disruptions: ScenarioDisruption[] = [];
+
+  for (const step of scenarioData.steps) {
+    if (step.action === 'rebalance_commitment') {
+      // Fetch the competing order to get its segment, priority_tier, region
+      const { data: competingOrderData, error: competingOrderError } = await supabase
+        .from('competing_orders')
+        .select('*')
+        .eq('commit_id', step.commit_id)
+        .single();
+
+      if (!competingOrderError && competingOrderData) {
+        disruptions.push({
+          scenario_id: scenarioId,
+          commit_id: step.commit_id,
+          disrupted_segment: competingOrderData.segment,
+          disrupted_priority_tier: competingOrderData.priority_tier,
+          disrupted_region: competingOrderData.region || null,
+          qty_reallocated: step.qty,
+          disruption_impact: step.disruption_impact || '', // Phrased in disrupted segment's cost-of-failure terms
+        });
+      }
+    }
+  }
+
+  // Batch write disruptions if any exist
+  if (disruptions.length > 0) {
+    const { error: disruptionError } = await supabase.from('scenario_disruptions').insert(disruptions);
+
+    if (disruptionError) {
+      console.error('Error writing scenario_disruptions:', disruptionError);
+      // Log but don't throw - scenario is already written; disruption audit trail is secondary
+    }
+  }
+
+  return scenarioWriteData;
 }
 
-// Update federal order risk score
+// Update order risk score (multi-segment)
 export async function updateOrderRiskScore(orderId: string, riskScore: string) {
   const supabase = getSupabase() as any;
 
-  const { error } = await (supabase as any)
-    .from('federal_orders')
+  const { error } = await supabase
+    .from('orders')
     .update({ risk_score: riskScore, updated_at: new Date().toISOString() })
     .eq('order_id', orderId);
 

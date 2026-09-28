@@ -4,11 +4,20 @@ import { getSupabase } from '@/lib/supabase';
 export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabase();
+    const url = new URL(request.url);
+    const segmentFilter = url.searchParams.get('segment'); // Optional filter
 
-    const { data, error } = await (supabase as any)
-      .from('federal_orders')
+    let query = (supabase as any)
+      .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // Apply segment filter if provided
+    if (segmentFilter && ['federal', 'commercial', 'distributor', 'd2c'].includes(segmentFilter)) {
+      query = query.eq('segment', segmentFilter);
+    }
+
+    const { data, error } = await query;
 
     // Add SKU names to response
     const skuNames: Record<string, string> = {
