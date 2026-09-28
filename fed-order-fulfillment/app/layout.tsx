@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Federal Order Fulfillment Control Tower',
-  description: 'AI-powered federal order fulfillment scenario analysis',
+  title: 'Multi-Segment Order Fulfillment Control Tower',
+  description: 'AI-powered fulfillment scenario analysis for federal, commercial, distributor, and D2C orders',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -12,8 +12,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="container">
           <header className="header">
-            <h1>Federal Order Fulfillment Control Tower</h1>
-            <p className="subtitle">AI-powered scenario analysis for federal orders</p>
+            <h1>Multi-Segment Order Fulfillment Control Tower</h1>
+            <p className="subtitle">AI-powered fulfillment planning for federal, commercial, distributor, and D2C orders</p>
           </header>
           <main>{children}</main>
         </div>
